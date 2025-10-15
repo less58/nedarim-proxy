@@ -1,60 +1,58 @@
 export default async function handler(req, res) {
-  // **תיקון CORS משופר:**
-  const origin = req.headers.origin;
+  // **כותרות CORS - חשוב מאוד!**
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+  res.setHeader('Access-Control-Max-Age', '86400'); // Cache preflight למשך 24 שעות
   
-  // רשימת דומיינים מורשים (הוסף את הדומיין של Base44 שלך)
-  const allowedOrigins = [
-    'https://qtrypzzcjebvfcihiynt.supabase.co', // הדומיין של Base44
-    'http://localhost:3000', // לפיתוח מקומי
-    'http://localhost:5173', // לפיתוח מקומי (Vite)
-  ];
-  
-  if (allowedOrigins.includes(origin) || !origin) {
-    res.setHeader('Access-Control-Allow-Origin', origin || '*');
-  }
-  
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
-  
-  // טיפול בבקשות OPTIONS (preflight)
+  // **טיפול בבקשת OPTIONS (preflight) - קריטי!**
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    res.status(200).end();
+    return;
   }
 
   try {
     const API_BASE_URL = "https://www.matara.pro/nedarimplus/Mechubad/Reports/ManageReports.aspx";
 
+    // קבלת action מ-query parameters
     const action = req.query.action || "GetClient_Table";
     
+    // בניית פרמטרים לשליחה ל-API של נדרים קארד
     const paramsData = {
       Action: action,
       MosadId: process.env.NED_USER,
       ApiPassword: process.env.NED_PASS,
-      ...req.query 
+      ...req.query
     };
     
-    delete paramsData.action; 
+    // הסרת action מהפרמטרים (כבר הוספנו אותו כ-Action)
+    delete paramsData.action;
 
+    // בניית query string
     const queryParams = new URLSearchParams(paramsData).toString();
-    const FULL_API_URL = `${API_BASE_URL}?${queryParams}`; 
+    const FULL_API_URL = `${API_BASE_URL}?${queryParams}`;
 
+    console.log('Requesting:', FULL_API_URL);
+
+    // שליחת בקשה ל-API של נדרים קארד
     const response = await fetch(FULL_API_URL, {
       method: "GET",
     });
 
     const text = await response.text();
+    console.log('Response:', text);
     
+    // ניסיון לפרסר JSON
     try {
         const jsonResponse = JSON.parse(text);
-        return res.status(response.status).json(jsonResponse);
+        res.status(response.status).json(jsonResponse);
     } catch (parseError) {
-        return res.status(response.status).send(text);
+        res.status(response.status).send(text);
     }
 
   } catch (err) {
     console.error("Proxy Error:", err);
-    return res.status(500).json({
+    res.status(500).json({
       error: "Proxy request failed",
       details: err.message
     });
