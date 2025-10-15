@@ -1,32 +1,36 @@
 export default async function handler(req, res) {
   try {
     const API_BASE_URL = "https://www.matara.pro/nedarimplus/Mechubad/Reports/ManageReports.aspx";
-    
-    // ודא שהקוד מקבל את ה-action וה-params מ-req.body
-    const { action, params } = req.body;
-    
-    if (!action) {
-        return res.status(400).json({ error: "Missing 'action' parameter in body" });
-    }
 
+    // **תיקון 1:** משיכת הנתונים מ-req.query (פרמטרים ב-URL)
+    const action = req.query.action || "GetClient_Table";
+    
+    // יצירת אובייקט עם פרמטרי ברירת המחדל
     const paramsData = {
       Action: action,
       MosadId: process.env.NED_USER,
       ApiPassword: process.env.NED_PASS,
-      ...(params || {}) // שלב פרמטרים נוספים מ-body
+      // **תיקון 2:** שלב את כל שאר פרמטרי ה-URL (req.query)
+      ...req.query 
     };
+    
+    // הסר פרמטרים שאינם צריכים להישלח לשרת החיצוני
+    delete paramsData.action; 
 
-    const formData = new URLSearchParams(paramsData).toString();
+    // יצירת מחרוזת פרמטרים בפורמט URL
+    const queryParams = new URLSearchParams(paramsData).toString();
 
-    const response = await fetch(API_BASE_URL, {
-      method: "POST", 
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData
+    // בניית ה-URL המלא לבקשת GET
+    const FULL_API_URL = `${API_BASE_URL}?${queryParams}`; 
+
+    // **תיקון 3:** שימוש בשיטת GET כפי שנדרש בתיעוד ("APIGET")
+    const response = await fetch(FULL_API_URL, {
+      method: "GET",
     });
 
     const text = await response.text();
+    
+    // ניסיון לפרסר JSON, אם לא מצליח, שולח טקסט גולמי
     try {
         const jsonResponse = JSON.parse(text);
         res.status(response.status).json(jsonResponse);
