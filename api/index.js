@@ -1,45 +1,33 @@
 export default async function handler(req, res) {
   try {
-    const API_URL = "https://www.matara.pro/nedarimplus/Mechubad/Reports/ManageReports.aspx";
+    const { method, query, body } = req;
 
-    // קבלת נתונים מהקריאה שמגיעה מה-Frontend (Base44)
-    const { method, body, query } = req;
+    // ניצור אובייקט של פרמטרים משולבים
+    const params = {
+      Action: query.action || (body && body.Action) || "GetClient_Table",
+      MosadId: process.env.NED_USER,
+      ApiPassword: process.env.NED_PASS,
+      // נשלב כל פרמטר נוסף שהגיע בבקשה
+      ...(body || {}),
+      ...(query || {})
+    };
 
-    // הגדרה גמישה: ניתן לשלוח Action ופרמטרים נוספים
-    // לדוגמה: ?action=GetClient_Table&FromDate=2024-01-01
-    const params = new URLSearchParams();
-
-    // Action ברירת מחדל אם לא נשלח
-    params.append("Action", query.action || body.Action || "GetClient_Table");
-
-    // חובה לפי ההגדרה שלך
-    params.append("MosadId", process.env.NED_USER);
-    params.append("ApiPassword", process.env.NED_PASS);
-
-    // כל פרמטר נוסף שהגיע מה-Frontend (למשל תאריכים, מזהים וכו')
-    const extraParams = { ...query, ...body };
-    for (const key in extraParams) {
-      if (!["Action"].includes(key)) {
-        params.append(key, extraParams[key]);
-      }
-    }
-
-    // שליחת הבקשה ל-API של נדרים
-    const response = await fetch(API_URL, {
+    const response = await fetch("https://www.matara.pro/nedarimplus/Mechubad/Reports/ManageReports.aspx", {
       method: "POST",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
       },
-      body: params.toString(),
+      body: new URLSearchParams(params),
     });
 
-    // קבלת תשובה
     const text = await response.text();
-
-    // החזרה ללקוח (Base44)
     res.status(response.status).send(text);
+
   } catch (err) {
-    console.error("Proxy error:", err);
-    res.status(500).json({ error: "Proxy request failed", details: err.message });
+    console.error("Proxy Error:", err);
+    res.status(500).json({
+      error: "Proxy request failed",
+      details: err.message
+    });
   }
 }
