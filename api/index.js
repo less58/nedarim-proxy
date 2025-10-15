@@ -1,15 +1,13 @@
 export default async function handler(req, res) {
   try {
-    const { method, query, body } = req;
+    const { method, query } = req;
 
-    // ניצור אובייקט של פרמטרים משולבים
+    // בניית פרמטרים מדויקים לפי דרישות נדרים
     const params = {
-      Action: query.action || (body && body.Action) || "GetClient_Table",
-      MosadId: process.env.NED_USER,
-      ApiPassword: process.env.NED_PASS,
-      // נשלב כל פרמטר נוסף שהגיע בבקשה
-      ...(body || {}),
-      ...(query || {})
+      Action: query.action || "GetClient_Table",
+      MosadId: process.env.NED_USER,     // מזהה מוסד
+      ApiPassword: process.env.NED_PASS, // סיסמה ל-API
+      ...(query || {})                   // מאפשר פרמטרים נוספים אם יש
     };
 
     const response = await fetch("https://www.matara.pro/nedarimplus/Mechubad/Reports/ManageReports.aspx", {
