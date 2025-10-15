@@ -1,35 +1,32 @@
 export default async function handler(req, res) {
   try {
     const API_BASE_URL = "https://www.matara.pro/nedarimplus/Mechubad/Reports/ManageReports.aspx";
-    // *** שינוי: קבלת פרמטרים מ-body של בקשת POST אם מגיעה בקשת POST לשרת הביניים שלך ***
-    // אם אתה מתכוון שהאפליקציה ב-base44 תשלח POST לשרת הביניים, אז קבל כך:
-    const { action, params } = req.body; 
-    // אם האפליקציה ב-base44 עדיין תשלח GET לשרת הביניים עם query params, אז:
-    // const { query } = req;
-    // const action = query.action;
-    // const params = query.params ? JSON.parse(query.params) : {}; // אם הפרמטרים מועברים כמחרוזת JSON בתוך query param
+    
+    // ודא שהקוד מקבל את ה-action וה-params מ-req.body
+    const { action, params } = req.body;
+    
+    if (!action) {
+        return res.status(400).json({ error: "Missing 'action' parameter in body" });
+    }
 
     const paramsData = {
-      Action: action || req.query.Action, // ודא שאתה מקבל את ה Action בצורה נכונה
+      Action: action,
       MosadId: process.env.NED_USER,
       ApiPassword: process.env.NED_PASS,
-      ...(params || req.query) // שלב פרמטרים נוספים מ-body או מ-query
+      ...(params || {}) // שלב פרמטרים נוספים מ-body
     };
 
-    // *** שינוי קריטי: שליחת בקשת POST לנדרים קארד ***
-    const formData = new URLSearchParams(paramsData).toString(); // יוצר פורמט URL-encoded
+    const formData = new URLSearchParams(paramsData).toString();
 
     const response = await fetch(API_BASE_URL, {
-      method: "POST", // *** שינוי: שיטת POST ***
+      method: "POST", 
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded', // *** שינוי: כותרת Content-Type ***
+        'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: formData // *** שינוי: גוף הבקשה ***
+      body: formData
     });
 
     const text = await response.text();
-    // Vercel handles JSON responses, assuming nedarim API returns valid JSON usually.
-    // If it returns text, you might need to try JSON.parse(text) or handle text directly.
     try {
         const jsonResponse = JSON.parse(text);
         res.status(response.status).json(jsonResponse);
